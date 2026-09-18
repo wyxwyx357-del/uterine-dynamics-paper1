@@ -23,8 +23,8 @@ def _row(case_id: str, percent: int, duration: float) -> dict[str, object]:
         "actual_fraction": percent / 100.0,
         "full_pair_frames": 100,
         "window_pair_frames": percent,
-        "full_duration_s": 50.0,
-        "window_duration_s": duration,
+        "full_pair_duration_s": 50.0,
+        "window_pair_duration_s": duration,
         "window_start_pair_frame": 0,
         "window_stop_pair_frame_exclusive": percent,
         "window_start_s": 0.0,
@@ -57,10 +57,10 @@ def test_inventory_has_one_row_per_case_and_records_each_window():
     inventory = RUNNER._build_inventory(pd.DataFrame(rows))
 
     assert list(inventory["case_id"]) == ["CASE_A", "CASE_B"]
-    assert inventory.loc[0, "p100_window_duration_s"] == 50.0
-    assert inventory.loc[0, "p025_window_duration_s"] == 12.5
-    assert inventory.loc[1, "p100_window_duration_s"] == 40.0
-    assert inventory.loc[1, "p025_window_duration_s"] == 10.0
+    assert inventory.loc[0, "p100_window_pair_duration_s"] == 50.0
+    assert inventory.loc[0, "p025_window_pair_duration_s"] == 12.5
+    assert inventory.loc[1, "p100_window_pair_duration_s"] == 40.0
+    assert inventory.loc[1, "p025_window_pair_duration_s"] == 10.0
     assert inventory.loc[0, "p050_rsr_valid_ratio"] == 0.9
     assert inventory.loc[0, "p075_curvature_valid_ratio"] == 0.6
 
