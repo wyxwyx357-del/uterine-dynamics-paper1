@@ -62,10 +62,10 @@ def test_centered_proportional_windows_are_deterministic_and_nested():
     assert (by_percent[50].start, by_percent[50].stop) == (25, 75)
     assert (by_percent[25].start, by_percent[25].stop) == (37, 62)
 
-    assert by_percent[100].actual_duration_s == 50.0
-    assert by_percent[75].actual_duration_s == 37.5
-    assert by_percent[50].actual_duration_s == 25.0
-    assert by_percent[25].actual_duration_s == 12.5
+    assert by_percent[100].actual_pair_duration_s == 50.0
+    assert by_percent[75].actual_pair_duration_s == 37.5
+    assert by_percent[50].actual_pair_duration_s == 25.0
+    assert by_percent[25].actual_pair_duration_s == 12.5
 
     ref = by_percent[100]
     for percent in (75, 50, 25):
@@ -104,7 +104,7 @@ def test_duration_extraction_reuses_frozen_feature_function():
 
     assert [row["target_percent"] for row in rows] == [100, 75, 50, 25]
     assert [row["window_pair_frames"] for row in rows] == [100, 75, 50, 25]
-    assert [row["window_duration_s"] for row in rows] == [50.0, 37.5, 25.0, 12.5]
+    assert [row["window_pair_duration_s"] for row in rows] == [50.0, 37.5, 25.0, 12.5]
 
     for row in rows:
         assert row["case_id"] == "CASE_SYNTH"
