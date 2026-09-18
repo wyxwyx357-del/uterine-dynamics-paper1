@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 
 from peristalsis_pipeline.clip_duration_robustness import (
-    centered_nested_windows,
-    extract_duration_features,
+    centered_proportional_windows,
+    extract_proportional_duration_features,
 )
 
 
 def _synthetic_payload(frame_count: int = 100, section_count: int = 4):
-    fps = np.asarray(1.0)
+    fps = np.asarray(2.0)
     rsr = np.arange(frame_count * 2 * section_count, dtype=float).reshape(
         frame_count, 2, section_count
     )
@@ -49,43 +49,62 @@ def _synthetic_payload(frame_count: int = 100, section_count: int = 4):
     }
 
 
-def test_centered_nested_windows_are_deterministic_and_nested():
-    windows = centered_nested_windows(
+def test_centered_proportional_windows_are_deterministic_and_nested():
+    windows = centered_proportional_windows(
         pair_frame_count=100,
-        fps=1.0,
-        durations_s=(60, 30, 20, 10),
+        fps=2.0,
+        proportions_pct=(100, 75, 50, 25),
     )
-    by_duration = {w.duration_s: w for w in windows}
+    by_percent = {w.target_percent: w for w in windows}
 
-    assert (by_duration[60].start, by_duration[60].stop) == (20, 80)
-    assert (by_duration[30].start, by_duration[30].stop) == (35, 65)
-    assert (by_duration[20].start, by_duration[20].stop) == (40, 60)
-    assert (by_duration[10].start, by_duration[10].stop) == (45, 55)
+    assert (by_percent[100].start, by_percent[100].stop) == (0, 100)
+    assert (by_percent[75].start, by_percent[75].stop) == (12, 87)
+    assert (by_percent[50].start, by_percent[50].stop) == (25, 75)
+    assert (by_percent[25].start, by_percent[25].stop) == (37, 62)
 
-    ref = by_duration[60]
-    for duration in (30, 20, 10):
-        current = by_duration[duration]
+    assert by_percent[100].actual_duration_s == 50.0
+    assert by_percent[75].actual_duration_s == 37.5
+    assert by_percent[50].actual_duration_s == 25.0
+    assert by_percent[25].actual_duration_s == 12.5
+
+    ref = by_percent[100]
+    for percent in (75, 50, 25):
+        current = by_percent[percent]
         assert ref.start <= current.start < current.stop <= ref.stop
 
 
-def test_centered_nested_windows_rejects_short_reference():
-    with pytest.raises(ValueError, match="insufficient pair-frame duration"):
-        centered_nested_windows(
-            pair_frame_count=59,
+def test_proportional_windows_use_floor_for_non_divisible_lengths():
+    windows = centered_proportional_windows(
+        pair_frame_count=101,
+        fps=1.0,
+        proportions_pct=(100, 75, 50, 25),
+    )
+    counts = {w.target_percent: w.sample_count for w in windows}
+
+    assert counts == {100: 101, 75: 75, 50: 50, 25: 25}
+    for window in windows:
+        assert window.actual_fraction <= window.target_percent / 100.0 + 1e-12
+
+
+def test_proportional_windows_require_100_percent_reference():
+    with pytest.raises(ValueError, match="must include the 100% reference"):
+        centered_proportional_windows(
+            pair_frame_count=100,
             fps=1.0,
-            durations_s=(60, 30, 20, 10),
+            proportions_pct=(75, 50, 25),
         )
 
 
 def test_duration_extraction_reuses_frozen_feature_function():
     payload = _synthetic_payload()
-    rows = extract_duration_features(
+    rows = extract_proportional_duration_features(
         **payload,
-        durations_s=(60, 30, 20, 10),
+        proportions_pct=(100, 75, 50, 25),
     )
 
-    assert [row["duration_s"] for row in rows] == [60, 30, 20, 10]
-    assert [row["window_pair_frames"] for row in rows] == [60, 30, 20, 10]
+    assert [row["target_percent"] for row in rows] == [100, 75, 50, 25]
+    assert [row["window_pair_frames"] for row in rows] == [100, 75, 50, 25]
+    assert [row["window_duration_s"] for row in rows] == [50.0, 37.5, 25.0, 12.5]
 
     for row in rows:
         assert row["case_id"] == "CASE_SYNTH"
@@ -102,9 +121,9 @@ def test_duration_extraction_preserves_missing_curvature_semantics():
     payload["physical_curvature_available"] = np.asarray(False)
     payload["physical_curvature_rate_available"] = np.asarray(False)
 
-    rows = extract_duration_features(
+    rows = extract_proportional_duration_features(
         **payload,
-        durations_s=(60, 30),
+        proportions_pct=(100, 50),
     )
 
     for row in rows:
@@ -112,3 +131,11 @@ def test_duration_extraction_preserves_missing_curvature_semantics():
         assert np.isnan(row["wall_curvature_change_rate_mm_inv_s_abs_p95"])
         assert row["dicom_physical_curvature_available"] is False
         assert row["dicom_physical_curvature_rate_available"] is False
+
+
+def test_duration_extraction_rejects_mismatched_time_axes():
+    payload = _synthetic_payload()
+    payload["cavity_qc_valid"] = payload["cavity_qc_valid"][:-1]
+
+    with pytest.raises(ValueError, match="must share the full pair-frame axis"):
+        extract_proportional_duration_features(**payload)
