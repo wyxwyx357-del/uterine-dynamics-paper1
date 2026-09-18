@@ -1,0 +1,26 @@
+name: Validate Paper1 migration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - migration/paper1-baseline
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r "代码/05_环境与校验/requirements.txt"
+      - name: Run migrated tests
+        run: |
+          python -m pytest -q "测试代码"
