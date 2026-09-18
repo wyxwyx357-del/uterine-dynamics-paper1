@@ -28,11 +28,11 @@ class ClipWindow:
         return self.sample_count / self.full_pair_frame_count
 
     @property
-    def actual_duration_s(self) -> float:
+    def actual_pair_duration_s(self) -> float:
         return self.sample_count / self.fps
 
     @property
-    def full_duration_s(self) -> float:
+    def full_pair_duration_s(self) -> float:
         return self.full_pair_frame_count / self.fps
 
     @property
@@ -218,8 +218,8 @@ def extract_proportional_duration_features(
                 "actual_fraction": window.actual_fraction,
                 "full_pair_frames": window.full_pair_frame_count,
                 "window_pair_frames": window.sample_count,
-                "full_duration_s": window.full_duration_s,
-                "window_duration_s": window.actual_duration_s,
+                "full_pair_duration_s": window.full_pair_duration_s,
+                "window_pair_duration_s": window.actual_pair_duration_s,
                 "window_start_pair_frame": window.start,
                 "window_stop_pair_frame_exclusive": window.stop,
                 "window_start_s": window.start_s,
