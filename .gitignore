@@ -1,0 +1,26 @@
+# Patient / imaging data
+*.dcm
+*.dicom
+*.mp4
+*.avi
+*.npy
+*.npz
+*.pth
+*.pt
+*.ckpt
+
+# Local data and outputs
+data/*
+outputs/*
+输出/*
+输入/*
+
+# Python / environments
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Local patient mappings / identifiers
+*patient_mapping*
+*病例映射*

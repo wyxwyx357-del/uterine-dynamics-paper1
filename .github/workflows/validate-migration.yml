@@ -1,0 +1,31 @@
+name: Validate Paper1 migration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - migration/paper1-baseline
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r "代码/05_环境与校验/requirements.txt"
+      - name: Run data-free migrated tests
+        run: |
+          python -m pytest -q "测试代码" \
+            -k "not frozen_data_integration_matrix_dedup_missingness_and_determinism"
+      - name: Record frozen-data integration status
+        run: |
+          echo "The excluded integration test requires frozen local output CSVs from the source project."
+          echo "It remains mandatory for local regression validation before the Paper 1 baseline tag."
