@@ -21,6 +21,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r "代码/05_环境与校验/requirements.txt"
-      - name: Run migrated tests
+      - name: Run data-free migrated tests
         run: |
-          python -m pytest -q "测试代码"
+          python -m pytest -q "测试代码" \
+            -k "not frozen_data_integration_matrix_dedup_missingness_and_determinism"
+      - name: Record frozen-data integration status
+        run: |
+          echo "The excluded integration test requires frozen local output CSVs from the source project."
+          echo "It remains mandatory for local regression validation before the Paper 1 baseline tag."
