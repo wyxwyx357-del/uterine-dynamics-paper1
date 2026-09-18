@@ -55,8 +55,8 @@ REQUIRED_METADATA = {
     "case_id",
     "target_percent",
     "actual_fraction",
-    "full_duration_s",
-    "window_duration_s",
+    "full_pair_duration_s",
+    "window_pair_duration_s",
     "rsr_valid_ratio",
     "cavity_valid_ratio",
     "longitudinal_valid_ratio",
@@ -225,19 +225,19 @@ def build_qc_summary(table: pd.DataFrame, proportions: tuple[int, ...]) -> pd.Da
     for percent in proportions:
         group = table.loc[table["target_percent"] == percent]
         duration_q1, duration_median, duration_q3 = _quartiles(
-            group["window_duration_s"]
+            group["window_pair_duration_s"]
         )
         row: dict[str, object] = {
             "target_percent": percent,
             "n_cases": int(len(group)),
-            "window_duration_s_min": float(
-                pd.to_numeric(group["window_duration_s"], errors="coerce").min()
+            "window_pair_duration_s_min": float(
+                pd.to_numeric(group["window_pair_duration_s"], errors="coerce").min()
             ),
-            "window_duration_s_q1": duration_q1,
-            "window_duration_s_median": duration_median,
-            "window_duration_s_q3": duration_q3,
-            "window_duration_s_max": float(
-                pd.to_numeric(group["window_duration_s"], errors="coerce").max()
+            "window_pair_duration_s_q1": duration_q1,
+            "window_pair_duration_s_median": duration_median,
+            "window_pair_duration_s_q3": duration_q3,
+            "window_pair_duration_s_max": float(
+                pd.to_numeric(group["window_pair_duration_s"], errors="coerce").max()
             ),
             "all_f01_f20_evaluable_n": int(
                 group["f01_f20_all_evaluable"].astype(bool).sum()
