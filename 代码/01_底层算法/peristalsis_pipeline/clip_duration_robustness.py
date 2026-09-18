@@ -1,26 +1,39 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 import numpy as np
 
 from .formal_feature_extraction import extract_formal_candidate_case_features
 
 
-DEFAULT_DURATIONS_S = (60, 30, 20, 10)
+DEFAULT_PROPORTIONS_PCT = (100, 75, 50, 25)
 
 
 @dataclass(frozen=True)
 class ClipWindow:
-    duration_s: int
+    target_percent: int
     start: int
     stop: int
     fps: float
+    full_pair_frame_count: int
 
     @property
     def sample_count(self) -> int:
         return self.stop - self.start
+
+    @property
+    def actual_fraction(self) -> float:
+        return self.sample_count / self.full_pair_frame_count
+
+    @property
+    def actual_duration_s(self) -> float:
+        return self.sample_count / self.fps
+
+    @property
+    def full_duration_s(self) -> float:
+        return self.full_pair_frame_count / self.fps
 
     @property
     def start_s(self) -> float:
@@ -41,60 +54,61 @@ def _scalar_fps(value: Any) -> float:
     return fps
 
 
-def centered_nested_windows(
+def centered_proportional_windows(
     *,
     pair_frame_count: int,
     fps: Any,
-    durations_s: Sequence[int] = DEFAULT_DURATIONS_S,
+    proportions_pct: Sequence[int] = DEFAULT_PROPORTIONS_PCT,
 ) -> tuple[ClipWindow, ...]:
-    """Create deterministic nested center windows on the pair-frame time axis.
+    """Create deterministic nested center windows from each case's own time axis.
 
-    The longest requested duration is centered within the available pair-frame
-    sequence. Every shorter duration is centered inside that same longest
-    reference window. No frames are repeated, interpolated, or stitched.
+    The complete formal pair-frame sequence is the 100% reference. Shorter
+    windows are centered within that same sequence. Window length uses integer
+    floor division, so the realized fraction never exceeds the requested
+    percentage. No frames are repeated, interpolated, stitched, or selected
+    according to motion strength, QC outcome, feature value, or clinical
+    outcome.
     """
 
     if pair_frame_count < 1:
         raise ValueError("pair_frame_count must be positive")
 
     fps_value = _scalar_fps(fps)
-    durations = tuple(int(x) for x in durations_s)
-    if not durations or any(x <= 0 for x in durations):
-        raise ValueError("durations_s must contain positive integers")
-    if len(set(durations)) != len(durations):
-        raise ValueError("durations_s must be unique")
+    proportions = tuple(int(x) for x in proportions_pct)
+    if not proportions:
+        raise ValueError("proportions_pct must not be empty")
+    if any(x <= 0 or x > 100 for x in proportions):
+        raise ValueError("proportions_pct values must be in 1..100")
+    if len(set(proportions)) != len(proportions):
+        raise ValueError("proportions_pct must be unique")
+    if 100 not in proportions:
+        raise ValueError("proportions_pct must include the 100% reference")
 
-    ordered = tuple(sorted(durations, reverse=True))
-    counts = {d: int(round(d * fps_value)) for d in ordered}
-    if any(n <= 0 for n in counts.values()):
-        raise ValueError("duration produced an empty window")
-
-    ref_duration = ordered[0]
-    ref_count = counts[ref_duration]
-    if pair_frame_count < ref_count:
-        raise ValueError(
-            f"insufficient pair-frame duration for {ref_duration}s reference: "
-            f"need {ref_count}, have {pair_frame_count}"
-        )
-
-    ref_start = (pair_frame_count - ref_count) // 2
-    ref_stop = ref_start + ref_count
-
+    ordered = tuple(sorted(proportions, reverse=True))
     windows: list[ClipWindow] = []
-    for duration in ordered:
-        count = counts[duration]
-        start = ref_start + (ref_count - count) // 2
+    for percent in ordered:
+        count = (pair_frame_count * percent) // 100
+        count = max(count, 1)
+        start = (pair_frame_count - count) // 2
         stop = start + count
-        if start < ref_start or stop > ref_stop:
-            raise RuntimeError("nested window construction failed")
         windows.append(
             ClipWindow(
-                duration_s=duration,
+                target_percent=percent,
                 start=start,
                 stop=stop,
                 fps=fps_value,
+                full_pair_frame_count=pair_frame_count,
             )
         )
+
+    ref = windows[0]
+    if ref.target_percent != 100 or ref.start != 0 or ref.stop != pair_frame_count:
+        raise RuntimeError("100% reference must cover the full pair-frame sequence")
+
+    for window in windows[1:]:
+        if not (ref.start <= window.start < window.stop <= ref.stop):
+            raise RuntimeError("nested proportional window construction failed")
+
     return tuple(windows)
 
 
@@ -102,15 +116,15 @@ def _slice_first_axis(array: np.ndarray, window: ClipWindow, *, field: str) -> n
     value = np.asarray(array)
     if value.ndim < 1:
         raise ValueError(f"{field} must have a pair-frame axis")
-    if value.shape[0] < window.stop:
+    if value.shape[0] != window.full_pair_frame_count:
         raise ValueError(
-            f"{field} has insufficient pair frames: need stop={window.stop}, "
-            f"shape={value.shape}"
+            f"{field} must share the full pair-frame axis: "
+            f"expected {window.full_pair_frame_count}, got {value.shape[0]}"
         )
     return value[window.start : window.stop]
 
 
-def extract_duration_features(
+def extract_proportional_duration_features(
     *,
     case_id: str,
     current_qc_radial_strain_rate_s: np.ndarray,
@@ -125,18 +139,18 @@ def extract_duration_features(
     dicom_pair_qc_valid: np.ndarray | None = None,
     physical_curvature_available: Any = False,
     physical_curvature_rate_available: Any = False,
-    durations_s: Sequence[int] = DEFAULT_DURATIONS_S,
+    proportions_pct: Sequence[int] = DEFAULT_PROPORTIONS_PCT,
 ) -> list[dict[str, object]]:
-    """Extract frozen F01-F20 on deterministic nested duration windows."""
+    """Extract the frozen F01-F20 on patient-specific proportional windows."""
 
     rsr = np.asarray(current_qc_radial_strain_rate_s)
     if rsr.ndim < 1:
         raise ValueError("current_qc_radial_strain_rate_s must have a pair-frame axis")
 
-    windows = centered_nested_windows(
+    windows = centered_proportional_windows(
         pair_frame_count=rsr.shape[0],
         fps=rsr_fps,
-        durations_s=durations_s,
+        proportions_pct=proportions_pct,
     )
 
     rows: list[dict[str, object]] = []
@@ -199,12 +213,17 @@ def extract_duration_features(
         )
         rows.append(
             {
-                "duration_s": window.duration_s,
+                "target_percent": window.target_percent,
+                "target_fraction": window.target_percent / 100.0,
+                "actual_fraction": window.actual_fraction,
+                "full_pair_frames": window.full_pair_frame_count,
+                "window_pair_frames": window.sample_count,
+                "full_duration_s": window.full_duration_s,
+                "window_duration_s": window.actual_duration_s,
                 "window_start_pair_frame": window.start,
                 "window_stop_pair_frame_exclusive": window.stop,
                 "window_start_s": window.start_s,
                 "window_stop_s": window.stop_s,
-                "window_pair_frames": window.sample_count,
                 **feature_row,
             }
         )
