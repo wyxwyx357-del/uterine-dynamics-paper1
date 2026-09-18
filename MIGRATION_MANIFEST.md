@@ -19,6 +19,10 @@ Tracking/P3/QC code is copied from the frozen `uterine-tracking` source. Measure
 
 No pregnancy-outcome modeling, clinical+AUC analysis, deep-learning encoder code, Doppler fusion, or propagation-direction analysis is included.
 
+## Dependency note
+
+The source repositories did not pin `pandas` or `scipy` in their tracked requirements even though the migrated Paper 1 robustness scripts import them. They are declared in the Paper 1 requirements without fabricated version pins. Their exact versions must be recorded from the validated runtime and pinned before the Paper 1 baseline is tagged.
+
 ## Current validation state
 
 - Repository structure and required-module presence: checked.
