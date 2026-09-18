@@ -3,3 +3,9 @@ opencv-python==4.13.0.92
 matplotlib==3.9.4
 pillow==11.3.0
 pytest==8.4.2
+
+# Required by migrated Paper 1 patient-level/robustness scripts.
+# The source repository did not pin these versions; pin them after recording
+# the actual validated Paper 1 runtime environment.
+pandas
+scipy
