@@ -83,8 +83,8 @@ WINDOW_METADATA_COLUMNS = (
     "actual_fraction",
     "full_pair_frames",
     "window_pair_frames",
-    "full_duration_s",
-    "window_duration_s",
+    "full_pair_duration_s",
+    "window_pair_duration_s",
     "window_start_pair_frame",
     "window_stop_pair_frame_exclusive",
     "window_start_s",
@@ -272,7 +272,7 @@ def _build_inventory(long_table: pd.DataFrame) -> pd.DataFrame:
         row: dict[str, object] = {
             "case_id": case_id,
             "full_pair_frames": int(reference["full_pair_frames"]),
-            "full_duration_s": float(reference["full_duration_s"]),
+            "full_pair_duration_s": float(reference["full_pair_duration_s"]),
             "dicom_physical_curvature_available": bool(
                 reference["dicom_physical_curvature_available"]
             ),
@@ -283,7 +283,7 @@ def _build_inventory(long_table: pd.DataFrame) -> pd.DataFrame:
         for item in group.itertuples(index=False):
             percent = int(item.target_percent)
             prefix = f"p{percent:03d}"
-            row[f"{prefix}_window_duration_s"] = float(item.window_duration_s)
+            row[f"{prefix}_window_pair_duration_s"] = float(item.window_pair_duration_s)
             row[f"{prefix}_actual_fraction"] = float(item.actual_fraction)
             row[f"{prefix}_rsr_valid_ratio"] = float(item.rsr_valid_ratio)
             row[f"{prefix}_cavity_valid_ratio"] = float(item.cavity_valid_ratio)
@@ -396,7 +396,7 @@ def main() -> None:
         output_inventory, index=False, encoding="utf-8-sig", na_rep="NA"
     )
 
-    durations = pd.to_numeric(inventory["full_duration_s"], errors="coerce")
+    durations = pd.to_numeric(inventory["full_pair_duration_s"], errors="coerce")
     manifest = {
         "status": "paper1_proportional_clip_duration_table_created",
         "generated_at": datetime.now(timezone.utc).astimezone().isoformat(),
@@ -428,7 +428,7 @@ def main() -> None:
             "formal_anatomical_deformation": str(anatomical_dir),
             "formal_dicom_curvature": str(dicom_dir),
         },
-        "full_duration_s_summary": {
+        "full_pair_duration_s_summary": {
             "min": float(durations.min()),
             "median": float(durations.median()),
             "max": float(durations.max()),
