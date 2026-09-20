@@ -14,7 +14,8 @@ Can patient-level image-derived uterine dynamic measurements be reproducibly obt
 - frozen F01–F20 patient-level measurement extraction
 - analytical perturbation robustness
 - normalized-time temporal-structure preservation under predefined mask-only sensitivity analysis
-- future Paper 1 validation code: spatial-structure robustness, clip-duration robustness, QC ablation, initialization reproducibility, cohort-level technical feasibility
+- normalized cervix-to-fundus spatial-structure preservation under predefined mask-only sensitivity analysis
+- future Paper 1 validation code: clip-duration robustness, QC ablation, initialization reproducibility, cohort-level technical feasibility
 
 ## Excluded
 
