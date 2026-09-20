@@ -26,7 +26,7 @@ _POSITION_TOLERANCE = 1e-6
 def normalized_spatial_bins(
     positions: np.ndarray, bins: int = DEFAULT_SPATIAL_BINS
 ) -> np.ndarray:
-    """Assign normalized 0-1 anatomical positions to equal-width spatial bins."""
+    """Assign normalized 0-1 section coordinates to equal-width spatial bins."""
 
     if bins < 1:
         raise ValueError("bins must be positive")
