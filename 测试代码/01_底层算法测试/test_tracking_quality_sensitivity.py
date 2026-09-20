@@ -10,6 +10,7 @@ import pandas as pd
 PROJECT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT / "代码/04_运行入口"))
 import run_tracking_quality_sensitivity as subject
+import report_quality_sensitivity as report
 
 
 class SensitivityTests(unittest.TestCase):
@@ -87,6 +88,31 @@ class SensitivityTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(RuntimeError, "NaN-to-finite"):
             subject.summarize_qc_feature_group(rows)
+
+    def test_legacy_saved_rows_can_be_resummarized_without_rerunning(self):
+        rows = pd.DataFrame(
+            {
+                "case_id": ["A", "B"],
+                "feature": ["f", "f"],
+                "statistic": ["median", "median"],
+                "original": [1.0, 2.0],
+                "grade3_shadow": [1.1, np.nan],
+                "absolute_change": [0.1, np.nan],
+                "relative_change_pct": [10.0, np.nan],
+                "has_pending_grade3": [True, True],
+                "grade3_effective": [True, True],
+                "topology_risk": [False, False],
+                "numerical_screen": [False, False],
+            }
+        )
+        upgraded = report.add_formal_summary_columns(rows)
+        self.assertIn("srd_pct", upgraded.columns)
+        self.assertEqual(int(upgraded.finite_to_nan.sum()), 1)
+        summary = report.formal_summary(upgraded)
+        pending = summary[summary.stratum.eq("pending_grade3")].iloc[0]
+        self.assertEqual(int(pending.n_original_finite), 2)
+        self.assertEqual(int(pending.n_paired_finite), 1)
+        self.assertEqual(int(pending.finite_to_nan_n), 1)
 
     def test_empty_intervention_is_identity(self):
         original=self.data()
