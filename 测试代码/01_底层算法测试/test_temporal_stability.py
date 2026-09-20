@@ -54,6 +54,26 @@ class TemporalStabilityTests(unittest.TestCase):
         np.testing.assert_allclose(profile, [1.5, 3.5, 5.5, 7.5, 9.5])
         np.testing.assert_array_equal(counts, [8, 8, 8, 8, 8])
 
+    def test_curvature_profile_stays_unavailable_when_formal_rate_is_unavailable(self):
+        data = self.data()
+        unavailable = StabilityCaseData(
+            data.case_id,
+            data.rsr,
+            data.rsr_fps,
+            data.pair_valid,
+            data.anatomical_fps,
+            data.cavity,
+            data.cavity_valid,
+            data.longitudinal,
+            data.longitudinal_valid,
+            data.curvature_rate,
+            True,
+            False,
+        )
+        profile, counts = temporal_profile(unavailable, FEATURE_SPECS[14], bins=5)
+        self.assertTrue(np.isnan(profile).all())
+        np.testing.assert_array_equal(counts, np.zeros(5, dtype=np.int64))
+
     def test_identity_profile_has_perfect_spearman_and_zero_srd(self):
         profile = np.array([1.0, 3.0, 2.0, 5.0, 4.0])
         counts = np.array([10, 10, 10, 10, 10])
