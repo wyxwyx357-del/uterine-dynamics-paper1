@@ -321,6 +321,60 @@ def analyze_case(folder, out, repetitions):
     return meta
 
 
+def summarize_qc_feature_group(all_g):
+    """Summarize one feature/stratum without hiding availability loss."""
+    original_finite = np.isfinite(all_g.original)
+    shadow_finite = np.isfinite(all_g.grade3_shadow)
+    nan_to_finite_n = int((~original_finite & shadow_finite).sum())
+    if nan_to_finite_n:
+        raise RuntimeError("NaN-to-finite violates mask-only QC sensitivity")
+    paired = all_g.loc[original_finite & shadow_finite].copy()
+    n_original_finite = int(original_finite.sum())
+    n_shadow_finite = int(shadow_finite.sum())
+    finite_to_nan_n = int((original_finite & ~shadow_finite).sum())
+    rho = (
+        paired.original.corr(paired.grade3_shadow, method="spearman")
+        if len(paired) > 1
+        else np.nan
+    )
+    ranks_a = paired.original.rank(ascending=False)
+    ranks_b = paired.grade3_shadow.rank(ascending=False)
+    return dict(
+        n_total_cases=int(len(all_g)),
+        n_original_finite=n_original_finite,
+        n_paired_finite=int(len(paired)),
+        n_shadow_finite=n_shadow_finite,
+        finite_to_nan_n=finite_to_nan_n,
+        finite_to_nan_fraction=(
+            finite_to_nan_n / n_original_finite if n_original_finite else np.nan
+        ),
+        availability_retention_fraction=(
+            n_shadow_finite / n_original_finite if n_original_finite else np.nan
+        ),
+        spearman=rho,
+        median_absolute_change=paired.absolute_change.median() if len(paired) else np.nan,
+        p95_absolute_change=paired.absolute_change.quantile(.95) if len(paired) else np.nan,
+        median_srd_pct=paired.srd_pct.median() if len(paired) else np.nan,
+        p95_srd_pct=paired.srd_pct.quantile(.95) if len(paired) else np.nan,
+        # Legacy denominator-sensitive metric retained only for audit/backward comparison.
+        median_relative_change_pct=(
+            paired.relative_change_pct.median() if len(paired) else np.nan
+        ),
+        median_abs_relative_change_pct=(
+            paired.relative_change_pct.abs().median() if len(paired) else np.nan
+        ),
+        p95_abs_relative_change_pct=(
+            paired.relative_change_pct.abs().quantile(.95) if len(paired) else np.nan
+        ),
+        median_abs_within_stratum_rank_change=(
+            (ranks_b-ranks_a).abs().median() if len(paired) else np.nan
+        ),
+        max_abs_within_stratum_rank_change=(
+            (ranks_b-ranks_a).abs().max() if len(paired) else np.nan
+        ),
+    )
+
+
 def aggregate(out):
     folders = sorted((out / "patients").glob("*/complete.json"))
     long = pd.concat([pd.read_csv(p.parent/"features.csv") for p in folders], ignore_index=True)
@@ -346,39 +400,12 @@ def aggregate(out):
             "pending_topology_no": long.has_pending_grade3 & ~long.topology_risk}
     for label, mask in strata.items():
         for feature, all_g in long.loc[mask].groupby("feature", sort=False):
-            original_finite = np.isfinite(all_g.original)
-            shadow_finite = np.isfinite(all_g.grade3_shadow)
-            paired_mask = original_finite & shadow_finite
-            paired = all_g.loc[paired_mask].copy()
-            n_original_finite = int(original_finite.sum())
-            n_shadow_finite = int(shadow_finite.sum())
-            finite_to_nan_n = int((original_finite & ~shadow_finite).sum())
-            if int((~original_finite & shadow_finite).sum()):
-                raise RuntimeError(f"{label} {feature}: NaN-to-finite violates mask-only sensitivity")
-            rho=paired.original.corr(paired.grade3_shadow,method="spearman") if len(paired)>1 else np.nan
-            ranks_a=paired.original.rank(ascending=False); ranks_b=paired.grade3_shadow.rank(ascending=False)
+            metrics = summarize_qc_feature_group(all_g)
             rows.append(dict(
                 stratum=label,
                 feature=feature,
                 statistic=all_g.statistic.iloc[0],
-                n_total_cases=int(len(all_g)),
-                n_original_finite=n_original_finite,
-                n_paired_finite=int(len(paired)),
-                n_shadow_finite=n_shadow_finite,
-                finite_to_nan_n=finite_to_nan_n,
-                finite_to_nan_fraction=finite_to_nan_n/n_original_finite if n_original_finite else np.nan,
-                availability_retention_fraction=n_shadow_finite/n_original_finite if n_original_finite else np.nan,
-                spearman=rho,
-                median_absolute_change=paired.absolute_change.median() if len(paired) else np.nan,
-                p95_absolute_change=paired.absolute_change.quantile(.95) if len(paired) else np.nan,
-                median_srd_pct=paired.srd_pct.median() if len(paired) else np.nan,
-                p95_srd_pct=paired.srd_pct.quantile(.95) if len(paired) else np.nan,
-                # Legacy denominator-sensitive metric retained only for audit/backward comparison.
-                median_relative_change_pct=paired.relative_change_pct.median() if len(paired) else np.nan,
-                median_abs_relative_change_pct=paired.relative_change_pct.abs().median() if len(paired) else np.nan,
-                p95_abs_relative_change_pct=paired.relative_change_pct.abs().quantile(.95) if len(paired) else np.nan,
-                median_abs_within_stratum_rank_change=(ranks_b-ranks_a).abs().median() if len(paired) else np.nan,
-                max_abs_within_stratum_rank_change=(ranks_b-ranks_a).abs().max() if len(paired) else np.nan,
+                **metrics,
                 screen_count=int(all_g.numerical_screen.sum()),
                 conclusion="数值QC敏感性_不等同于伪影真值验证",
             ))
