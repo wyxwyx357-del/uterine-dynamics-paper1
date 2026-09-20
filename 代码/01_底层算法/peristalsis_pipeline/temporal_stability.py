@@ -46,6 +46,13 @@ def _finite_stat(values: np.ndarray, statistic_type: str) -> float:
     raise ValueError(f"unknown statistic type: {statistic_type}")
 
 
+def _scalar_bool(value, *, field: str) -> bool:
+    array = np.asarray(value)
+    if array.size != 1:
+        raise ValueError(f"{field} must be a scalar boolean")
+    return bool(array.reshape(-1)[0])
+
+
 def temporal_profile(
     data: StabilityCaseData,
     spec: FeatureSpec,
@@ -59,9 +66,15 @@ def temporal_profile(
     gap filling, or cross-bin stitching is performed.
     """
 
-    values, valid = domain_values_and_valid(data, spec)
     profile = np.full(bins, np.nan, dtype=np.float64)
     counts = np.zeros(bins, dtype=np.int64)
+    if spec.family == "curvature" and not _scalar_bool(
+        data.physical_curvature_rate_available,
+        field="physical_curvature_rate_available",
+    ):
+        return profile, counts
+
+    values, valid = domain_values_and_valid(data, spec)
     if values.size == 0:
         return profile, counts
     if values.ndim < 1:
