@@ -1,7 +1,8 @@
 """Normalized cervix-to-fundus spatial-profile utilities for Paper 1.
 
 This module summarizes frozen local dynamic measurements inside fixed
-normalized anatomical-position bins. It does not rerun tracking, redefine
+normalized cervix-to-fundus section-coordinate bins. The frozen coordinate is
+not physical distance or wall arc length. It does not rerun tracking, redefine
 features, infer waves, or prove same-tissue identity across frames.
 """
 from __future__ import annotations
@@ -53,7 +54,7 @@ def feature_spatial_positions(
     *,
     position_count: int,
 ) -> np.ndarray:
-    """Return the anatomical coordinate represented by each feature position.
+    """Return the normalized section coordinate represented by each feature position.
 
     RSR, cavity-width strain rate, and curvature-rate positions use the frozen
     section coordinates. Longitudinal strain rate is defined between adjacent
