@@ -385,7 +385,9 @@ def aggregate(out):
     table(out/"患者级特征比较_长表.csv", long)
     table(out/"患者内高RSR与普通帧比较.csv", comparisons)
     wide = long.pivot(index="case_id", columns="feature_id", values=[
-        "original", "grade3_shadow", "absolute_change", "relative_change_pct",
+        "original", "grade3_shadow", "absolute_change", "srd_pct",
+        "relative_change_pct", "availability_status", "finite_to_nan",
+        "valid_before", "valid_after", "valid_loss_fraction",
         "random_delta_p025", "random_delta_median", "random_delta_p975",
         "random_abs_tail_fraction", "rank_original", "rank_grade3_shadow", "rank_change",
     ])
