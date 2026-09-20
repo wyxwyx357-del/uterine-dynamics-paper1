@@ -333,8 +333,8 @@ def main() -> None:
         expected_cases=args.expected_cases,
         bins=int(args.bins),
         normalized_position_definition=(
-            "frozen normalized_cervix_to_fundus_position partitioned into "
-            "equal-width 0-1 bins"
+            "frozen normalized_cervix_to_fundus_position (normalized section "
+            "coordinate, not physical distance) partitioned into equal-width 0-1 bins"
         ),
         longitudinal_position_definition=(
             "midpoint of the two adjacent frozen section coordinates"
@@ -393,8 +393,9 @@ def main() -> None:
 不读取临床结局的前提下，比较 Original 与同一 pending Grade-3 mask-only shadow。
 
 空间轴使用冻结的 normalized_cervix_to_fundus_position（宫颈→宫底 0-1），
-固定分为 {args.bins} 个等比例解剖位置段。RSR、腔宽形变率和曲率变化率使用
-原 section 坐标；纵向壁形变率定义在相邻 section 之间，因此使用两端坐标中点。
+固定分为 {args.bins} 个等比例 section 坐标段。该坐标是冻结流程中的归一化 section
+坐标，不代表毫米距离或真实壁弧长。RSR、腔宽形变率和曲率变化率使用原 section
+坐标；纵向壁形变率定义在相邻 section 之间，因此使用两端坐标中点。
 
 每个空间段内使用与对应 F01-F20 相同的解剖侧域、绝对值和 median/P95 统计，
 并跨原始时间帧汇总。没有空间插值、补点、等距重采样或跨空缺段拼接。
