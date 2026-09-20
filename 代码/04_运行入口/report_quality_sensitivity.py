@@ -12,17 +12,68 @@ import pandas as pd
 
 from run_tracking_quality_sensitivity import (
     DEFAULT_OUT, ROOT, FEATURES, FEATURE_SPECS, load_case, exclude_frames, feature_vector,
-    runs, sha, save_json, table,
+    runs, sha, save_json, summarize_qc_feature_group, table,
 )
+
+
+def add_formal_summary_columns(long):
+    """Backfill Paper 1 metrics from saved A/B values without rerunning perturbations."""
+    result=long.copy()
+    original=pd.to_numeric(result["original"],errors="coerce").to_numpy(float)
+    shadow=pd.to_numeric(result["grade3_shadow"],errors="coerce").to_numpy(float)
+    paired=np.isfinite(original)&np.isfinite(shadow)
+    denominator=np.abs(original)+np.abs(shadow)
+    srd=np.full(len(result),np.nan,dtype=float)
+    zero=paired&(denominator==0)
+    nonzero=paired&(denominator>0)
+    srd[zero]=0.0
+    srd[nonzero]=200.0*np.abs(shadow[nonzero]-original[nonzero])/denominator[nonzero]
+    result["srd_pct"]=srd
+    result["finite_to_nan"]=np.isfinite(original)&~np.isfinite(shadow)
+    if np.any(~np.isfinite(original)&np.isfinite(shadow)):
+        raise RuntimeError("saved QC sensitivity contains NaN-to-finite, violating mask-only semantics")
+    result["availability_status"]=np.where(
+        paired,"paired_finite",
+        np.where(np.isfinite(original),"finite_to_nan","both_nan")
+    )
+    return result
+
+
+def formal_summary(long):
+    rows=[]
+    strata={"all": np.ones(len(long),bool), "pending_grade3": long.has_pending_grade3,
+            "effective_grade3": long.grade3_effective, "topology_yes": long.topology_risk,
+            "topology_no": ~long.topology_risk,
+            "pending_topology_yes": long.has_pending_grade3 & long.topology_risk,
+            "pending_topology_no": long.has_pending_grade3 & ~long.topology_risk}
+    for label,mask in strata.items():
+        for feature,g in long.loc[mask].groupby("feature",sort=False):
+            rows.append(dict(
+                stratum=label,feature=feature,statistic=g.statistic.iloc[0],
+                **summarize_qc_feature_group(g),
+                screen_count=int(g.numerical_screen.sum()),
+                conclusion="数值QC敏感性_不等同于伪影真值验证",
+            ))
+    return pd.DataFrame(rows)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,default=DEFAULT_OUT)
     parser.add_argument("--root",type=Path,default=ROOT)
+    parser.add_argument("--expected-cases",type=int,default=319,
+                        help="当前Paper 1冻结QC敏感性队列数；默认319")
     args=parser.parse_args();out=args.output
-    long=pd.read_csv(out/"患者级特征比较_长表.csv")
-    summary=pd.read_csv(out/"总体分层汇总.csv")
+    long=add_formal_summary_columns(pd.read_csv(out/"患者级特征比较_长表.csv"))
+    n_cases=int(long.case_id.nunique())
+    if args.expected_cases is not None and n_cases != args.expected_cases:
+        raise ValueError(
+            f"Paper 1 QC sensitivity expected {args.expected_cases} cases, found {n_cases}; "
+            "do not silently change the frozen cohort"
+        )
+    table(out/"患者级特征比较_长表_Paper1正式重汇总.csv",long)
+    summary=formal_summary(long)
+    table(out/"Paper1_QC敏感性正式汇总.csv",summary)
     checks=[]; block_rows=[]; manifests=[]
     for i,case in enumerate(long.case_id.unique(),1):
         p=out/"patients"/case
