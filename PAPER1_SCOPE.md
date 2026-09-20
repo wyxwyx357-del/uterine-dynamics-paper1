@@ -13,7 +13,8 @@ Can patient-level image-derived uterine dynamic measurements be reproducibly obt
 - DICOM physical curvature calibration used by F15–F20
 - frozen F01–F20 patient-level measurement extraction
 - analytical perturbation robustness
-- future Paper 1 validation code: clip-duration robustness, QC ablation, initialization reproducibility, cohort-level technical feasibility
+- normalized-time temporal-structure preservation under predefined mask-only sensitivity analysis
+- future Paper 1 validation code: spatial-structure robustness, clip-duration robustness, QC ablation, initialization reproducibility, cohort-level technical feasibility
 
 ## Excluded
 
