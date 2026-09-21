@@ -155,8 +155,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--expected-cases",
         type=int,
-        default=319,
-        help="Frozen Paper 1 perturbation cohort size; ignored when --cases is explicitly supplied.",
+        default=None,
+        help="Optional frozen Paper 1 perturbation cohort size; ignored when --cases is explicitly supplied.",
     )
     parser.add_argument("--bootstrap-repetitions", type=int, default=2000)
     run(parser.parse_args())

@@ -61,8 +61,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,default=DEFAULT_OUT)
     parser.add_argument("--root",type=Path,default=ROOT)
-    parser.add_argument("--expected-cases",type=int,default=319,
-                        help="当前Paper 1冻结QC敏感性队列数；默认319")
+    parser.add_argument("--expected-cases",type=int,default=None,
+                        help="可选的Paper 1冻结QC敏感性队列数；显式指定时数量不符则停止")
     args=parser.parse_args();out=args.output
     long=add_formal_summary_columns(pd.read_csv(out/"患者级特征比较_长表.csv"))
     n_cases=int(long.case_id.nunique())

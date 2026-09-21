@@ -433,8 +433,8 @@ def main():
     parser.add_argument("--output",type=Path,default=DEFAULT_OUT)
     parser.add_argument("--repetitions",type=int,default=500)
     parser.add_argument("--limit",type=int)
-    parser.add_argument("--expected-cases",type=int,default=319,
-                        help="Paper 1当前冻结QC敏感性队列数；默认319，数量不符则停止")
+    parser.add_argument("--expected-cases",type=int,default=None,
+                        help="可选的Paper 1冻结QC敏感性队列数；显式指定时数量不符则停止")
     parser.add_argument("--resume",action="store_true")
     args=parser.parse_args()
     if args.repetitions<1: raise ValueError("repetitions must be positive")

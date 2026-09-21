@@ -289,7 +289,7 @@ def main() -> None:
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--bins", type=int, default=DEFAULT_SPATIAL_BINS)
-    parser.add_argument("--expected-cases", type=int, default=319)
+    parser.add_argument("--expected-cases", type=int, default=None)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()

@@ -11,8 +11,8 @@ The current top-level Paper 1 analysis entry points are under `代码/04_运行�
 | Paper 1 analysis | Current entry point | Current role |
 |---|---|---|
 | Frozen tracking / P3 / QC production path | `代码/04_运行入口/run_tracking_only_pipeline.py` | Produces the frozen tracking/QC upstream outputs used by downstream measurements. Not rerun by the later sensitivity scripts. |
-| 319-case analytical perturbation robustness | `代码/04_运行入口/run_all_patient_perturbation_stability.py` | Runs the historical 42-condition perturbation implementation and summarizes the canonical primary/family ICC/CV results; defaults to a frozen 319-case count guard unless an explicit `--cases` subset is supplied. |
-| 310-case proportional observation-window truncation | `代码/04_运行入口/run_clip_duration_robustness.py` | Generates frozen F01-F20 on deterministic centered 100/75/50/25% nested windows without rerunning tracking; defaults to a frozen 310-case count guard. |
+| 319-case analytical perturbation robustness | `代码/04_运行入口/run_all_patient_perturbation_stability.py` | Runs the historical 42-condition perturbation implementation and summarizes the canonical primary/family ICC/CV results; defaults to all currently discovered cases, with `--expected-cases N` available after a final cohort is frozen. |
+| 310-case proportional observation-window truncation | `代码/04_运行入口/run_clip_duration_robustness.py` | Generates frozen F01-F20 on deterministic centered 100/75/50/25% nested windows without rerunning tracking; defaults to all currently available cases, with `--expected-case-count N` available after a final cohort is frozen. |
 | Proportional-truncation statistics | `代码/04_运行入口/run_clip_duration_statistics.py` | Computes the predefined pairwise ICC(A,1), 2000-repeat patient bootstrap CI, Bland-Altman, absolute/relative error, Spearman and QC-duration summaries. |
 | Grade-3 mask sensitivity | `代码/04_运行入口/run_tracking_quality_sensitivity.py` | Applies the predefined pending Grade-3 whole-frame mask-only sensitivity analysis to frozen outputs. Does not rerun tracking or change QC decisions. |
 | Grade-3 sensitivity report/resummary | `代码/04_运行入口/report_quality_sensitivity.py` | Reporting/resummarization layer for the quality-sensitivity outputs, including legacy 319-case outputs. |
@@ -36,7 +36,7 @@ The following branch files were initially copied byte-for-byte to `main`:
 - the four corresponding unit/entry-point tests;
 - `CLIP_DURATION_PROTOCOL.md`.
 
-The initial copy was verified by Git blob SHA. After migration, `main` changes only `run_clip_duration_robustness.py` to make the frozen 310-case assertion the default (`--expected-case-count 310`). The underlying proportional-window module, statistics module, statistical entry point, tests, and frozen protocol remain the recovered source versions. No implementation was reconstructed from result tables or manuscript text.
+The initial copy was verified by Git blob SHA. `run_clip_duration_robustness.py` retains an optional `--expected-case-count N` assertion for use after final cohort freezing; it does not impose a default cohort size. The underlying proportional-window module, statistics module, statistical entry point, tests, and frozen protocol remain the recovered source versions. No implementation was reconstructed from result tables or manuscript text.
 
 ## 2. Frozen measurement and algorithm dependencies
 

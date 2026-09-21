@@ -30,3 +30,5 @@ How robust are frozen patient-level local uterine dynamic measurements from shor
 - new initialization-reproducibility experiments
 
 Changes that alter the frozen measurement definition must be versioned explicitly and the affected validation results rerun.
+
+Analysis rules are frozen, but cohort size is not yet frozen. Formal entry points use all currently available input cases by default; after the final cohort is frozen, their `expected-case` parameter can explicitly protect the case count.
