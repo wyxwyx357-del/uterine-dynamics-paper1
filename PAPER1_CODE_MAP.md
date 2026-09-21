@@ -12,26 +12,31 @@ The current top-level Paper 1 analysis entry points are under `代码/04_运行�
 |---|---|---|
 | Frozen tracking / P3 / QC production path | `代码/04_运行入口/run_tracking_only_pipeline.py` | Produces the frozen tracking/QC upstream outputs used by downstream measurements. Not rerun by the later sensitivity scripts. |
 | 319-case analytical perturbation robustness | `代码/04_运行入口/run_all_patient_perturbation_stability.py` | Runs the historical 42-condition perturbation implementation on all available frozen patient outputs and summarizes the canonical primary/family ICC/CV results. |
+| 310-case proportional observation-window truncation | `代码/04_运行入口/run_clip_duration_robustness.py` | Generates frozen F01-F20 on deterministic centered 100/75/50/25% nested windows without rerunning tracking. |
+| Proportional-truncation statistics | `代码/04_运行入口/run_clip_duration_statistics.py` | Computes the predefined pairwise ICC(A,1), 2000-repeat patient bootstrap CI, Bland-Altman, absolute/relative error, Spearman and QC-duration summaries. |
 | Grade-3 mask sensitivity | `代码/04_运行入口/run_tracking_quality_sensitivity.py` | Applies the predefined pending Grade-3 whole-frame mask-only sensitivity analysis to frozen outputs. Does not rerun tracking or change QC decisions. |
 | Grade-3 sensitivity report/resummary | `代码/04_运行入口/report_quality_sensitivity.py` | Reporting/resummarization layer for the quality-sensitivity outputs, including legacy 319-case outputs. |
 | Normalized-time profile preservation | `代码/04_运行入口/run_temporal_stability.py` | Uses the same pending Grade-3 mask-only intervention and fixed normalized-time bins. |
 | Normalized cervix-to-fundus spatial profile preservation | `代码/04_运行入口/run_spatial_stability.py` | Uses the same pending Grade-3 mask-only intervention and frozen normalized section coordinate. |
 
-### Required Paper 1 component not yet present in this repository
+### Proportional-truncation provenance
 
-The completed **310-case proportional observation-window truncation** analysis (100/75/50/25%, deterministic centered nested windows) is part of the current Paper 1 manuscript plan, but its generating/statistics Python scripts are **not present on the current `main` tree**.
+The clip-duration implementation was recovered from the repository's frozen branch:
 
-Available evidence outside this repository records:
+- branch: `exp/clip-duration`
+- frozen branch head: `c279ca95f29da64da183cc1f54b22f1c9785e803`
+- protocol: `CLIP_DURATION_PROTOCOL.md`
 
-- 310 cases;
-- proportions 100/75/50/25%;
-- deterministic centered nested slices with floor frame count;
-- no motion/QC/feature/outcome-based window selection;
-- no repetition, interpolation, or stitching;
-- frozen formal F01-F20 extraction;
-- ICC(A,1), patient-cluster percentile bootstrap (2000 repetitions), Bland-Altman, relative error and secondary Spearman summaries.
+The following branch files were copied byte-for-byte to `main`:
 
-The exact scripts that produced those outputs must be migrated from the original `uterine-dynamics-paper1-exp-clip-duration` working copy before this repository can be called a complete Paper 1 reproducibility package. Do **not** recreate the scripts from memory or from result tables.
+- `代码/01_底层算法/peristalsis_pipeline/clip_duration_robustness.py`
+- `代码/01_底层算法/peristalsis_pipeline/clip_duration_statistics.py`
+- `代码/04_运行入口/run_clip_duration_robustness.py`
+- `代码/04_运行入口/run_clip_duration_statistics.py`
+- the four corresponding unit/entry-point tests;
+- `CLIP_DURATION_PROTOCOL.md`.
+
+Post-copy verification confirmed that every copied file has the same Git blob SHA on `main` as on `exp/clip-duration`. No implementation was reconstructed from result tables or manuscript text.
 
 ## 2. Frozen measurement and algorithm dependencies
 
@@ -43,6 +48,8 @@ The principal implementation modules are under `代码/01_底层算法/peristals
 - `feature_stability.py`: shared feature definitions, masking helpers, SRD and related robustness utilities.
 - `anatomical_deformation_features.py`: anatomical deformation quantities used by the formal features.
 - `dicom_curvature_calibration.py`: physical curvature calibration used by F15-F20.
+- `clip_duration_robustness.py`: deterministic proportional-window construction and frozen F01-F20 extraction on each window.
+- `clip_duration_statistics.py`: proportional-truncation ICC(A,1), patient bootstrap CI and paired error statistics.
 - `temporal_stability.py`: normalized-time profile utilities.
 - `spatial_stability.py`: normalized-position spatial profile utilities.
 - `formal_qc_contract.py`: formal QC contract used by the frozen measurement pipeline.
@@ -93,6 +100,9 @@ Current Paper 1-relevant coverage includes:
 
 - formal feature extraction;
 - feature stability/robustness;
+- proportional clip-duration window construction;
+- proportional clip-duration statistics;
+- proportional clip-duration generation/statistics entry points;
 - anatomical deformation;
 - DICOM curvature calibration;
 - P3 position/boundary correction;
@@ -126,25 +136,26 @@ formal_feature_extraction.py
         +--> 319-case perturbation
         |    run_all_patient_perturbation_stability.py
         |
-        +--> Grade-3 mask sensitivity
-        |    run_tracking_quality_sensitivity.py
-        |          |
-        |          +--> temporal profiles
-        |          |    run_temporal_stability.py
-        |          |
-        |          +--> spatial profiles
-        |               run_spatial_stability.py
-        |
         +--> 310-case proportional truncation
-             [exact generating/statistics scripts pending migration]
+        |    run_clip_duration_robustness.py
+        |          |
+        |          +--> pairwise statistics
+        |               run_clip_duration_statistics.py
+        |
+        +--> Grade-3 mask sensitivity
+             run_tracking_quality_sensitivity.py
+                   |
+                   +--> temporal profiles
+                   |    run_temporal_stability.py
+                   |
+                   +--> spatial profiles
+                        run_spatial_stability.py
 ```
 
 ## 7. Repository cleanup rule
-
-Until the proportional-truncation scripts are migrated and verified:
 
 1. do not delete or move existing Python files solely for naming/visual cleanliness;
 2. do not alter formulas, thresholds, masks, feature definitions or statistics during cleanup;
 3. do not treat 5-case/28-case historical scripts as independent manuscript validation cohorts;
 4. do not add pregnancy-outcome prediction, AUC modeling, deep encoders, Doppler fusion, or propagation analysis to the Paper 1 formal entry-point set;
-5. when the truncation scripts are migrated, preserve their original source hashes/manifests and verify that regenerated outputs match the recorded result hashes before designating them formal.
+5. preserve the `exp/clip-duration` branch and its frozen head as provenance for the proportional-truncation implementation.
