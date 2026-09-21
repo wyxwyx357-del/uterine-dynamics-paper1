@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - migration/paper1-baseline
+      - exp/clip-duration
 
 jobs:
   pytest:
