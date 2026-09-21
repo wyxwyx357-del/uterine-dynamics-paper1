@@ -34,6 +34,6 @@ Excluded:
 
 The repository contains formal entry points for tracking/P3/QC, 319-case analytical perturbation robustness, the completed 310-case proportional observation-window truncation analysis, Grade-3 quality sensitivity, temporal structure analysis, and spatial structure analysis.
 
-The proportional-truncation implementation was recovered from the repository's frozen `exp/clip-duration` branch at `c279ca95f29da64da183cc1f54b22f1c9785e803` and copied to `main` without modification. The copied files were verified to have identical Git blob SHAs to the frozen branch versions.
+The proportional-truncation implementation was recovered from the repository's frozen `exp/clip-duration` branch at `c279ca95f29da64da183cc1f54b22f1c9785e803`. The initial migration was verified against the frozen branch by Git blob SHA. After that migration, `main` adds only a default frozen-cohort guard (`--expected-case-count 310`) to `run_clip_duration_robustness.py`; the proportional-window construction, frozen F01-F20 extraction, and duration-statistics implementations are unchanged.
 
-The repository cleanup/migration does not change algorithms, thresholds, masks, feature definitions, statistics, or existing results.
+The 319-case perturbation entry point likewise defaults to a frozen `--expected-cases 319` guard unless an explicit `--cases` subset is supplied. These guards prevent silent cohort drift and do not change algorithms, thresholds, masks, feature definitions, statistics, or existing results.
