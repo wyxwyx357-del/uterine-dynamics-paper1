@@ -320,8 +320,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--expected-case-count",
         type=int,
-        default=None,
-        help="Optional frozen case-count assertion.",
+        default=310,
+        help="Frozen Paper 1 proportional-truncation cohort size; set explicitly only for controlled test/subset runs.",
     )
     parser.add_argument("--allow-overwrite", action="store_true")
     return parser.parse_args()
