@@ -39,6 +39,11 @@ def run(args):
         cases = [p for p in cases if p.name in requested]
         if set(p.name for p in cases) != requested:
             raise ValueError("Requested cases not found")
+    elif args.expected_cases is not None and len(cases) != args.expected_cases:
+        raise ValueError(
+            f"Paper 1 perturbation robustness expected {args.expected_cases} cases, "
+            f"found {len(cases)}; do not silently change the frozen cohort"
+        )
     hashes, records, all_rows = {}, [], []
     for i, folder in enumerate(cases, 1):
         pipeline = folder / "02_追踪质控与形变"
@@ -147,5 +152,11 @@ if __name__ == "__main__":
     parser.add_argument("--root", type=Path, default=PROJECT / "输出")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cases", nargs="+")
+    parser.add_argument(
+        "--expected-cases",
+        type=int,
+        default=319,
+        help="Frozen Paper 1 perturbation cohort size; ignored when --cases is explicitly supplied.",
+    )
     parser.add_argument("--bootstrap-repetitions", type=int, default=2000)
     run(parser.parse_args())
