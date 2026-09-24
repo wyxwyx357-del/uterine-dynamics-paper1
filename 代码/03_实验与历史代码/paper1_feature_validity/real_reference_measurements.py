@@ -469,3 +469,87 @@ def compare_algorithm_to_reference(
             }
         )
     return output
+
+
+def summarize_patient_level_algorithm_reference(
+    tasks: list[dict[str, str]],
+    measurements: list[dict[str, object]],
+    algorithm_rows: list[dict[str, str]],
+) -> list[dict[str, object]]:
+    """Compare case-level means, keeping repeated frames within a case.
+
+    Only tasks with both a valid algorithm value and at least one valid manual
+    reference contribute to a case-level mean.  The case, not an individual
+    frame, is the unit in the returned agreement statistics.
+    """
+
+    validated_tasks = validate_tasks(tasks)
+    task_by_id = {row["task_id"]: row for row in validated_tasks}
+    expected_cases: dict[str, set[str]] = defaultdict(set)
+    for task in validated_tasks:
+        expected_cases[task["measure"]].add(task["case_id"])
+    reference_by_task: dict[str, list[float]] = defaultdict(list)
+    for row in measurements:
+        if row.get("status") == "VALID":
+            reference_by_task[str(row["task_id"])].append(float(row["value"]))
+
+    _check_required(algorithm_rows, ALGORITHM_RESULT_COLUMNS, "algorithm result table")
+    _reject_forbidden_headers(algorithm_rows, "algorithm result table")
+    seen_algorithm_tasks: set[tuple[str, str, str]] = set()
+    matched_by_case_measure: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(
+        lambda: {"reference": [], "algorithm": []}
+    )
+    for row in algorithm_rows:
+        task_id = str(row["task_id"]).strip()
+        if task_id not in task_by_id:
+            raise ValueError(f"algorithm result refers to unknown task {task_id!r}")
+        task = task_by_id[task_id]
+        measure = row["measure"].strip()
+        side = row["side"].strip()
+        key = (task_id, measure, side)
+        if measure != task["measure"] or side != task["side"]:
+            raise ValueError(f"algorithm result metadata does not match task {task_id}")
+        if key in seen_algorithm_tasks:
+            raise ValueError(f"duplicate algorithm result for task {task_id}")
+        seen_algorithm_tasks.add(key)
+        if row["algorithm_status"].strip().upper() != "VALID":
+            continue
+        algorithm_value = _float_or_none(row["algorithm_value"], f"{task_id}.algorithm_value")
+        if algorithm_value is None or not reference_by_task.get(task_id):
+            continue
+        case_measure = (task["case_id"], task["measure"])
+        matched_by_case_measure[case_measure]["reference"].append(float(np.mean(reference_by_task[task_id])))
+        matched_by_case_measure[case_measure]["algorithm"].append(algorithm_value)
+
+    output: list[dict[str, object]] = []
+    for measure in REFERENCE_MEASURES:
+        differences = []
+        for (case_id, case_measure), values in matched_by_case_measure.items():
+            if case_measure != measure:
+                continue
+            differences.append(float(np.mean(values["algorithm"])) - float(np.mean(values["reference"])))
+        stats = _agreement_stats(np.asarray(differences, dtype=np.float64))
+        if stats["n"] >= 2:
+            bias_se = (float(stats["loa_upper"]) - float(stats["loa_lower"])) / (2.0 * 1.96 * math.sqrt(int(stats["n"])))
+            bias_ci_lower = float(stats["bias"]) - 1.96 * bias_se
+            bias_ci_upper = float(stats["bias"]) + 1.96 * bias_se
+        else:
+            bias_ci_lower = math.nan
+            bias_ci_upper = math.nan
+        output.append(
+            {
+                "measure": measure,
+                "expected_patients": len(expected_cases[measure]),
+                "evaluable_patients": int(stats["n"]),
+                "coverage": int(stats["n"]) / len(expected_cases[measure]) if expected_cases[measure] else math.nan,
+                "n": stats["n"],
+                "bias": stats["bias"],
+                "bias_ci_lower": bias_ci_lower,
+                "bias_ci_upper": bias_ci_upper,
+                "mae": stats["mae"],
+                "rmse": stats["rmse"],
+                "loa_lower": stats["loa_lower"],
+                "loa_upper": stats["loa_upper"],
+            }
+        )
+    return output

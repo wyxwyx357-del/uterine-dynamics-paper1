@@ -12,6 +12,7 @@ from paper1_feature_validity.real_reference_measurements import (
     compare_algorithm_to_reference,
     compute_all_reference_measurements,
     read_csv_rows,
+    summarize_patient_level_algorithm_reference,
     summarize_observer_agreement,
     validate_annotations,
     validate_tasks,
@@ -25,7 +26,17 @@ def main() -> None:
     parser.add_argument("--annotations", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--algorithm-results", type=Path)
+    parser.add_argument(
+        "--observer-only",
+        action="store_true",
+        help="feasibility-only observer review; formal validation requires algorithm results",
+    )
     args = parser.parse_args()
+
+    if args.algorithm_results is None and not args.observer_only:
+        raise SystemExit(
+            "--algorithm-results is required for formal validation; use --observer-only only for feasibility review"
+        )
 
     tasks = validate_tasks(read_csv_rows(args.tasks))
     annotations = validate_annotations(read_csv_rows(args.annotations), tasks)
@@ -44,13 +55,35 @@ def main() -> None:
     )
 
     algorithm_agreement = None
+    patient_algorithm_agreement = None
     if args.algorithm_results is not None:
         algorithm_rows = read_csv_rows(args.algorithm_results)
         algorithm_agreement = compare_algorithm_to_reference(tasks, measurements, algorithm_rows)
+        patient_algorithm_agreement = summarize_patient_level_algorithm_reference(
+            tasks, measurements, algorithm_rows
+        )
         write_csv_rows(
             args.output / "algorithm_reference_agreement.csv",
             algorithm_agreement,
             ("measure", "expected_tasks", "evaluable_algorithm_reference_tasks", "coverage", "bias", "mae", "rmse", "loa_lower", "loa_upper"),
+        )
+        write_csv_rows(
+            args.output / "patient_level_algorithm_reference_agreement.csv",
+            patient_algorithm_agreement,
+            (
+                "measure",
+                "expected_patients",
+                "evaluable_patients",
+                "coverage",
+                "n",
+                "bias",
+                "bias_ci_lower",
+                "bias_ci_upper",
+                "mae",
+                "rmse",
+                "loa_lower",
+                "loa_upper",
+            ),
         )
 
     lines = [
@@ -69,14 +102,20 @@ def main() -> None:
             f"| {row['measure']} | {row['expected_tasks']} | {row['evaluable_two_observer_tasks']} | {row['coverage']:.3f} | {row['bias']:.6g} | {row['mae']:.6g} | {row['rmse']:.6g} | {loa} |"
         )
     if algorithm_agreement is None:
-        lines.extend(["", "Algorithm-vs-reference comparison: not run; provide an independently exported algorithm-result table when ready."])
+        lines.extend(["", "Observer-only feasibility report. Formal validation was not run because no algorithm-result table was supplied."])
     else:
-        lines.extend(["", "## Algorithm versus reference", "", "The algorithm comparison uses the mean of evaluable observer values per task as the reference and reports only agreement metrics.", ""])
+        lines.extend(["", "## Algorithm versus reference", "", "The formal algorithm comparison is required and uses the mean of evaluable observer values per task as the reference. Task-level and patient-level agreement are reported; repeated frames remain within the same patient/case.", ""])
         lines.extend(["| Measure | Tasks | Coverage | Bias | MAE | RMSE | LoA |", "|---|---:|---:|---:|---:|---:|---|"])
         for row in algorithm_agreement:
             loa = f"{row['loa_lower']:.6g} to {row['loa_upper']:.6g}" if row["evaluable_algorithm_reference_tasks"] >= 2 else "not estimable (n<2)"
             lines.append(
                 f"| {row['measure']} | {row['evaluable_algorithm_reference_tasks']} | {row['coverage']:.3f} | {row['bias']:.6g} | {row['mae']:.6g} | {row['rmse']:.6g} | {loa} |"
+            )
+        lines.extend(["", "### Patient-level primary analysis", "", "| Measure | Expected patients | Evaluable patients | Coverage | Bias | 95% CI for bias | MAE | RMSE |", "|---|---:|---:|---:|---:|---|---:|---:|"])
+        for row in patient_algorithm_agreement or []:
+            ci = f"{row['bias_ci_lower']:.6g} to {row['bias_ci_upper']:.6g}" if row["evaluable_patients"] >= 2 else "not estimable (n<2)"
+            lines.append(
+                f"| {row['measure']} | {row['expected_patients']} | {row['evaluable_patients']} | {row['coverage']:.3f} | {row['bias']:.6g} | {ci} | {row['mae']:.6g} | {row['rmse']:.6g} |"
             )
     lines.extend(
         [

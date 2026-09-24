@@ -4,7 +4,7 @@
 
 1. Code-level regression: passed for the frozen feature, deformation, DICOM-calibration, geometry, stability and formal-entrypoint tests.
 2. Data-free synthetic validation: passed for all 10 requested geometry scenarios and the 20-feature contract. The independent oracle checks RSR, cavity-width rate, along-wall segment rate and calibrated physical curvature rate, including static/rigid-motion/scale/local-change/masking cases.
-3. Real-video independent reference validation: not started. No raw video, DICOM, annotation or trajectory files are present in this checkout, so no patient task list or patient result has been created.
+3. Real-video independent reference validation: not started. No raw video, DICOM, annotation or trajectory files are present in this checkout, so no patient task list or patient result has been created. The formal path now requires an independent algorithm-result table and produces patient-level primary agreement summaries; observer-only output is explicitly feasibility-only.
 
 ## Current test result
 

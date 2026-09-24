@@ -25,9 +25,6 @@ from peristalsis_pipeline.formal_feature_extraction import (
     BIOLOGICAL_FEATURE_COLUMNS,
     extract_formal_candidate_case_features,
 )
-from peristalsis_pipeline.radial_pair_geometry import (
-    radial_strain_rate_from_positions,
-)
 from peristalsis_pipeline.tracking_huang_radial_pairs import radial_deformation_from_tracking
 
 
@@ -110,6 +107,31 @@ def _finite_abs_stats(values: np.ndarray, valid: np.ndarray | None = None) -> di
         "median": float(np.median(selected)),
         "p95": float(np.percentile(selected, 95)),
     }
+
+
+def _radial_rate_oracle(
+    source_inner: np.ndarray,
+    source_outer: np.ndarray,
+    measured_inner: np.ndarray,
+    measured_outer: np.ndarray,
+    fps: float,
+) -> np.ndarray:
+    """Independent radial-rate oracle; do not call the frozen geometry helper."""
+
+    source_length = np.linalg.norm(
+        np.asarray(source_outer, dtype=np.float64)
+        - np.asarray(source_inner, dtype=np.float64),
+        axis=-1,
+    )
+    measured_length = np.linalg.norm(
+        np.asarray(measured_outer, dtype=np.float64)
+        - np.asarray(measured_inner, dtype=np.float64),
+        axis=-1,
+    )
+    result = np.full(source_length.shape, np.nan, dtype=np.float64)
+    valid = (source_length > 1e-12) & np.isfinite(source_length) & np.isfinite(measured_length)
+    result[valid] = (measured_length[valid] - source_length[valid]) / source_length[valid] * float(fps)
+    return result
 
 
 def _wall_centers(section_count: int = 7) -> np.ndarray:
@@ -226,10 +248,10 @@ def _oracle_outputs(geometry: SyntheticGeometry) -> dict[str, np.ndarray]:
     source_outer = source[:, 7:14]
     measured_inner = measured[:, :7]
     measured_outer = measured[:, 7:14]
-    rsr = radial_strain_rate_from_positions(
+    rsr = _radial_rate_oracle(
         source_inner, source_outer, measured_inner, measured_outer, geometry.fps
     )
-    rsr = np.stack((rsr, radial_strain_rate_from_positions(
+    rsr = np.stack((rsr, _radial_rate_oracle(
         source[:, 14:21], source[:, 21:28], measured[:, 14:21], measured[:, 21:28], geometry.fps
     )), axis=1)
     rsr[~valid] = np.nan

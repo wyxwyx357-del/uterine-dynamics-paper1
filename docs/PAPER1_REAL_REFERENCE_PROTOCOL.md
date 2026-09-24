@@ -29,7 +29,7 @@ F15 is `NOT_EVALUABLE` if calibration status is missing, invalid, unchecked, or 
 
 ## Agreement report
 
-Observer agreement reports evaluable two-observer task coverage, bias, MAE, RMSE and Bland–Altman limits of agreement when at least two paired tasks exist. Algorithm-versus-reference comparison is optional and uses the mean of evaluable observer values for the same task. Correlation, if later added, is auxiliary only and must not replace agreement statistics.
+Observer agreement reports evaluable two-observer task coverage, bias, MAE, RMSE and Bland–Altman limits of agreement when at least two paired tasks exist. For formal validation, an independently exported algorithm-result table is mandatory: the primary analysis aggregates matched task measurements within each case and reports patient-level coverage, bias, 95% bias confidence intervals, MAE, RMSE and Bland–Altman limits. A task-level diagnostic table is also retained. The `--observer-only` flag is restricted to feasibility review and must not be reported as algorithm accuracy. Correlation, if later added, is auxiliary only and must not replace agreement statistics.
 
 ## Commands
 
@@ -42,7 +42,13 @@ python 代码/03_实验与历史代码/paper1_feature_validity/run_real_referenc
 After two annotators independently fill the generated annotation template:
 
 ```text
-python 代码/03_实验与历史代码/paper1_feature_validity/run_real_reference_measurements.py --tasks <tasks_dir>/annotation_tasks.csv --annotations <filled_annotations.csv> --output <reference_report_dir>
+python 代码/03_实验与历史代码/paper1_feature_validity/run_real_reference_measurements.py --tasks <tasks_dir>/annotation_tasks.csv --annotations <filled_annotations.csv> --algorithm-results <algorithm_results.csv> --output <reference_report_dir>
 ```
 
-An algorithm comparison requires a separately exported table with only task-level algorithm values and status; it must not contain clinical labels.
+The observer-only feasibility path is explicit:
+
+```text
+python 代码/03_实验与历史代码/paper1_feature_validity/run_real_reference_measurements.py --tasks <tasks_dir>/annotation_tasks.csv --annotations <filled_annotations.csv> --observer-only --output <feasibility_report_dir>
+```
+
+The algorithm table must contain only task-level algorithm values and status; it must not contain clinical labels. Repeated frames from one case are aggregated within that case and are never counted as independent patients.

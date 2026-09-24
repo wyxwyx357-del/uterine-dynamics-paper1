@@ -11,6 +11,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "代码" / "03_实验与历史代码"))
 from paper1_feature_validity.real_reference_measurements import (  # noqa: E402
     compare_algorithm_to_reference,
     compute_all_reference_measurements,
+    summarize_patient_level_algorithm_reference,
     summarize_observer_agreement,
     validate_annotations,
     validate_tasks,
@@ -112,6 +113,24 @@ def test_two_observer_and_algorithm_agreement_are_task_level() -> None:
     algorithm = [{"task_id": task["task_id"], "measure": "F01", "side": "anterior", "algorithm_value": "0.5", "algorithm_status": "VALID"}]
     comparison = compare_algorithm_to_reference([task], measurements, algorithm)[0]
     assert comparison["evaluable_algorithm_reference_tasks"] == 1
+
+
+def test_algorithm_primary_summary_aggregates_repeated_tasks_within_case() -> None:
+    first = validate_tasks([_task("F01", "anterior")])[0]
+    second = dict(first)
+    second["task_id"] = "task_F01_anterior_second_frame"
+    tasks = validate_tasks([first, second])
+    points = {"source_inner": (0, 0), "source_outer": (0, 2), "target_inner": (0, 0), "target_outer": (0, 3)}
+    annotations = _annotation_rows(first, "A", points) + _annotation_rows(second, "A", points)
+    measurements = compute_all_reference_measurements(tasks, annotations)
+    algorithm = [
+        {"task_id": first["task_id"], "measure": "F01", "side": "anterior", "algorithm_value": "0.5", "algorithm_status": "VALID"},
+        {"task_id": second["task_id"], "measure": "F01", "side": "anterior", "algorithm_value": "0.7", "algorithm_status": "VALID"},
+    ]
+    summary = summarize_patient_level_algorithm_reference(tasks, measurements, algorithm)[0]
+    assert summary["expected_patients"] == 1
+    assert summary["evaluable_patients"] == 1
+    assert np.isclose(summary["bias"], 0.1)
 
 
 def test_annotations_require_complete_independent_roles() -> None:
