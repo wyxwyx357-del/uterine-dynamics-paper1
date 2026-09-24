@@ -1,0 +1,1 @@
+case_id,video_token,frame_count,fps,section_count,quality_tier,motion_coverage_tier,tracking_risk,dicom_calibration_status,dicom_pair_dt_s,scale_x_mm_per_px,scale_y_mm_per_px,source_video_ref
